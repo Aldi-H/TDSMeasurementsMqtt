@@ -125,7 +125,7 @@ void setup()
   setupWifi();
 
   //* MQTT Setup
-  client.setServer(mqtt_server, 1833);
+  client.setServer(mqtt_server, 1883);
   client.setCallback(valveCallback);
 
   //* Gravity TDS Setup
@@ -234,6 +234,8 @@ void mqttReconnect()
       Serial.print(client.state());
       Serial.println("retry in 5 second");
       delay(5000);
+      Serial.println("Waiting for connection");
+      setupWifi();
       mqttReconnect();
     }
   }
