@@ -19,6 +19,9 @@
 #include <SPI.h>
 #include "RTClib.h"
 
+//* LCD I2C Library
+#include <LiquidCrystal_I2C.h>
+
 //! Variable and PIN Initialization Goes Here!
 //* MQTT Variable
 #define MQTT_MSG_Buffer_Size (50)
@@ -53,6 +56,9 @@ GravityTDS gravityTds;
 OneWire oneWire(33);
 DallasTemperature DS18B20_Sensor(&oneWire);
 
+//* LCD I2C Instance
+LiquidCrystal_I2C lcd_I2C(0x27, 20, 4);
+
 //* RTC Instance
 RTC_DS1307 rtc_DS1307;
 
@@ -86,6 +92,10 @@ unsigned int flowMilliLitres2 = 0;
 unsigned long totalMilliLitres2 = 0;
 unsigned long flowMeterOldTime = 0;
 
+//* I2C LCD Instance
+unsigned long backlightOnTime = 0;
+const unsigned long backlightOnDuration = 3000;
+
 //! Function Declaration Goes Here!
 //* Function declaration for setupWifi
 void setupWifi();
@@ -114,9 +124,19 @@ void setup()
 {
   Serial.begin(115200);
 
+  //* LCD I2C Setup
+  lcd_I2C.init();
+  lcd_I2C.backlight();
+
+  lcd_I2C.clear();
+
+  //* Check RTC
   if (!rtc_DS1307.begin())
   {
     Serial.println("Couldn't find RTC");
+    lcd_I2C.clear();
+    lcd_I2C.setCursor(0, 1);
+    lcd_I2C.print("Couldn't find RTC");
     while (1)
       ;
   }
@@ -177,12 +197,36 @@ void loop()
     {
       sendToMqtt();
       Serial.println("Send to mqtt");
+
+      lcd_I2C.backlight();
+      lcd_I2C.clear();
+      lcd_I2C.setCursor(0, 0);
+      lcd_I2C.print("Send to MQTT");
+      lcd_I2C.clear();
+
+      lcd_I2C.setCursor(0, 1);
+      lcd_I2C.print("Temperature: ");
+      lcd_I2C.setCursor(12, 1);
+      lcd_I2C.print(temperatureValueResult);
+
+      lcd_I2C.setCursor(0, 2);
+      lcd_I2C.print("TDS Value: ");
+      lcd_I2C.setCursor(10, 2);
+      lcd_I2C.print(tdsValueResult);
+
+      backlightOnTime = millisCurrentTime;
       isSendToMqtt = true;
     }
   }
   else if (rtcCurrentTime.second() != 0)
   {
     isSendToMqtt = false;
+  }
+
+  // LCD Backlight timer
+  if (millisCurrentTime - backlightOnTime > backlightOnDuration)
+  {
+    lcd_I2C.noBacklight();
   }
 }
 //! MAIN PROGRAM END HERE!
@@ -193,7 +237,14 @@ void setupWifi()
 {
   Serial.println();
   Serial.print("Connecting to ");
+  lcd_I2C.setCursor(0, 0);
+  lcd_I2C.print("Connecting to ");
   Serial.println(ssid);
+  lcd_I2C.clear();
+
+  lcd_I2C.setCursor(0, 1);
+  lcd_I2C.print(String(ssid));
+  lcd_I2C.clear();
 
   WiFi.begin(ssid, password);
 
@@ -205,8 +256,23 @@ void setupWifi()
 
   Serial.println("");
   Serial.println("WiFi Connected");
+
+  lcd_I2C.setCursor(0, 0);
+  lcd_I2C.print("WiFi Connected");
+
   Serial.println("IP address: ");
+
+  lcd_I2C.setCursor(0, 1);
+  lcd_I2C.print("IP Address: ");
+
   Serial.println(WiFi.localIP());
+  lcd_I2C.setCursor(0, 2);
+  lcd_I2C.print(WiFi.localIP());
+
+  lcd_I2C.clear();
+  lcd_I2C.setCursor(0, 0);
+  lcd_I2C.print("WiFi connected");
+  lcd_I2C.clear();
 }
 
 //* mqttReconnect() function definition
@@ -214,14 +280,26 @@ void mqttReconnect()
 {
   while (!client.connected())
   {
+    String mqttMessageConnect = "Attempting MQTT connection";
+
     Serial.print("Attempting MQTT connection");
     String clientId = "ESP32Client-";
+
+    lcd_I2C.clear();
+    lcd_I2C.setCursor(0, 1);
+    lcd_I2C.print(mqttMessageConnect.substring(0, 15));
+    lcd_I2C.setCursor(0, 2);
+    lcd_I2C.print(mqttMessageConnect.substring(16, 26));
     clientId += String(random(0xfff), HEX);
 
     // Attemp to connect
     if (client.connect(clientId.c_str()))
     {
       Serial.println(" connected");
+
+      lcd_I2C.setCursor(11, 2);
+      lcd_I2C.print("connected");
+      lcd_I2C.clear();
 
       //* client subscribe topic
       client.subscribe("heizou/valve/50");
@@ -231,10 +309,27 @@ void mqttReconnect()
     else
     {
       Serial.print("failed, rc= ");
+
+      lcd_I2C.clear();
+      lcd_I2C.setCursor(0, 1);
+      lcd_I2C.print("Failed to connect");
+
       Serial.print(client.state());
       Serial.println("retry in 5 second");
+
+      lcd_I2C.clear();
+      lcd_I2C.setCursor(0, 2);
+      lcd_I2C.print("Retry in 5 second");
+
       delay(5000);
       Serial.println("Waiting for connection");
+
+      lcd_I2C.clear();
+      lcd_I2C.setCursor(0, 1);
+      lcd_I2C.print("Waiting for");
+      lcd_I2C.setCursor(0, 2);
+      lcd_I2C.print("connection");
+
       setupWifi();
       mqttReconnect();
     }
