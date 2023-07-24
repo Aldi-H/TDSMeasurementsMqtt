@@ -198,7 +198,8 @@ void loop()
       sendToMqtt();
       Serial.println("Send to mqtt");
 
-      lcd_I2C.backlight();
+      // lcd_I2C.backlight();
+      lcd_I2C.noBacklight();
       lcd_I2C.clear();
       lcd_I2C.setCursor(0, 0);
       lcd_I2C.print("Send to MQTT");
@@ -214,7 +215,7 @@ void loop()
       lcd_I2C.setCursor(10, 2);
       lcd_I2C.print(tdsValueResult);
 
-      backlightOnTime = millisCurrentTime;
+      // backlightOnTime = millisCurrentTime;
       isSendToMqtt = true;
     }
   }
@@ -223,11 +224,12 @@ void loop()
     isSendToMqtt = false;
   }
 
-  // LCD Backlight timer
-  if (millisCurrentTime - backlightOnTime > backlightOnDuration)
-  {
-    lcd_I2C.noBacklight();
-  }
+  /*
+    // LCD Backlight timer
+    if (millisCurrentTime - backlightOnTime > backlightOnDuration)
+    {
+      lcd_I2C.noBacklight();
+    } */
 }
 //! MAIN PROGRAM END HERE!
 
@@ -237,10 +239,11 @@ void setupWifi()
 {
   Serial.println();
   Serial.print("Connecting to ");
+  Serial.println(ssid);
+
+  lcd_I2C.backlight();
   lcd_I2C.setCursor(0, 0);
   lcd_I2C.print("Connecting to ");
-  Serial.println(ssid);
-  lcd_I2C.clear();
 
   lcd_I2C.setCursor(0, 1);
   lcd_I2C.print(String(ssid));
@@ -273,6 +276,7 @@ void setupWifi()
   lcd_I2C.setCursor(0, 0);
   lcd_I2C.print("WiFi connected");
   lcd_I2C.clear();
+  lcd_I2C.noBacklight();
 }
 
 //* mqttReconnect() function definition
@@ -285,6 +289,7 @@ void mqttReconnect()
     Serial.print("Attempting MQTT connection");
     String clientId = "ESP32Client-";
 
+    lcd_I2C.backlight();
     lcd_I2C.clear();
     lcd_I2C.setCursor(0, 1);
     lcd_I2C.print(mqttMessageConnect.substring(0, 15));
@@ -300,6 +305,11 @@ void mqttReconnect()
       lcd_I2C.setCursor(11, 2);
       lcd_I2C.print("connected");
       lcd_I2C.clear();
+      lcd_I2C.setCursor(0, 1);
+      lcd_I2C.print("Waiting MQTT");
+      lcd_I2C.setCursor(0, 2);
+      lcd_I2C.print("Send data");
+      lcd_I2C.noBacklight();
 
       //* client subscribe topic
       client.subscribe("heizou/valve/50");
@@ -310,6 +320,7 @@ void mqttReconnect()
     {
       Serial.print("failed, rc= ");
 
+      lcd_I2C.backlight();
       lcd_I2C.clear();
       lcd_I2C.setCursor(0, 1);
       lcd_I2C.print("Failed to connect");
@@ -332,6 +343,7 @@ void mqttReconnect()
 
       setupWifi();
       mqttReconnect();
+      lcd_I2C.noBacklight();
     }
   }
 }
