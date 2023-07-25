@@ -56,6 +56,14 @@ GravityTDS gravityTds;
 OneWire oneWire(33);
 DallasTemperature DS18B20_Sensor(&oneWire);
 
+//* Global Variable TDS and Temperature
+//* Initial Value for TDS and Temperature
+float tdsValue = 0;
+float temperatureValue = 0;
+/* //* Caller Value for TDS and Temperature
+float tdsValueResult;
+float temperatureValueResult; */
+
 //* LCD I2C Instance
 LiquidCrystal_I2C lcd_I2C(0x27, 20, 4);
 
@@ -68,14 +76,6 @@ PubSubClient client(espClient);
 const char *mqtt_server = "broker.emqx.io";
 char msg[MQTT_MSG_Buffer_Size];
 bool isSendToMqtt = false;
-
-//* Global Variable TDS and Temperature
-//* Initial Value for TDS and Temperature
-float tdsValue = 0;
-float temperatureValue = 0;
-//* Caller Value for TDS and Temperature
-float tdsValueResult;
-float temperatureValueResult;
 
 //* Flow Meter Counter Instance
 volatile int flowMeterCount1;
@@ -104,7 +104,7 @@ void setupWifi();
 void mqttReconnect();
 
 //* FUnction declaration for readTDS
-void readTDS(float *tdsReadingResult, float *temperatureReadingResult);
+void readTDS();
 
 //* Function declaration for sendToMqtt
 void sendToMqtt();
@@ -189,7 +189,7 @@ void loop()
 
   DateTime rtcCurrentTime = rtc_DS1307.now();
 
-  readTDS(&tdsValueResult, &temperatureValueResult);
+  readTDS();
 
   if (rtcCurrentTime.second() == 0 && !isSendToMqtt)
   {
@@ -208,12 +208,12 @@ void loop()
       lcd_I2C.setCursor(0, 1);
       lcd_I2C.print("Temperature: ");
       lcd_I2C.setCursor(12, 1);
-      lcd_I2C.print(temperatureValueResult);
+      lcd_I2C.print(temperatureValue);
 
       lcd_I2C.setCursor(0, 2);
       lcd_I2C.print("TDS Value: ");
       lcd_I2C.setCursor(10, 2);
-      lcd_I2C.print(tdsValueResult);
+      lcd_I2C.print(tdsValue);
 
       // backlightOnTime = millisCurrentTime;
       isSendToMqtt = true;
@@ -349,18 +349,19 @@ void mqttReconnect()
 }
 
 //* readTDS() function definition
-void readTDS(float *tdsReadingResult, float *temperatureReadingResult)
+void readTDS()
 {
   DS18B20_Sensor.requestTemperatures();
   temperatureValue = DS18B20_Sensor.getTempCByIndex(0);
   gravityTds.setTemperature(temperatureValue);
   gravityTds.update();
   tdsValue = gravityTds.getTdsValue();
+
   Serial.printf("Temperature: %.2fC ", temperatureValue);
   Serial.printf("| TDS Value: %.2fppm \n", tdsValue);
 
-  *tdsReadingResult = tdsValue;
-  *temperatureReadingResult = temperatureValue;
+  /**tdsReadingResult = tdsValue;
+   *temperatureReadingResult = temperatureValue; */
 }
 
 //* sendToMqtt() function definition
@@ -481,7 +482,7 @@ void openSelenoidValve(int flowRate)
   detachInterrupt(FLOW_PIN1);
   detachInterrupt(FLOW_PIN2);
 
-  readTDS(&tdsValueResult, &temperatureValueResult);
+  readTDS();
 }
 
 //* valveCallback() function definition
