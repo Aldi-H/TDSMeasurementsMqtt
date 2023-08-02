@@ -230,7 +230,6 @@ void loop()
       sendToMqtt();
       Serial.println("Send to mqtt");
 
-      // lcd_I2C.backlight();
       lcd_I2C.noBacklight();
       lcd_I2C.clear();
       lcd_I2C.setCursor(0, 0);
@@ -248,7 +247,6 @@ void loop()
       lcd_I2C.print(tdsValue);
       lcd_I2C.print(TDSMedian);
 
-      // backlightOnTime = millisCurrentTime;
       isSendToMqtt = true;
     }
   }
@@ -256,13 +254,6 @@ void loop()
   {
     isSendToMqtt = false;
   }
-
-  /*
-    // LCD Backlight timer
-    if (millisCurrentTime - backlightOnTime > backlightOnDuration)
-    {
-      lcd_I2C.noBacklight();
-    } */
 }
 //! MAIN PROGRAM END HERE!
 
@@ -540,6 +531,12 @@ void openSelenoidValve(int flowRate)
       Serial.println("mL");
       Serial.print("\t");
 
+      lcd_I2C.clear();
+      lcd_I2C.setCursor(0, 1);
+      lcd_I2C.print("Total ml A: ");
+      lcd_I2C.setCursor(12, 1);
+      lcd_I2C.print(totalMilliLitres1, DEC);
+
       Serial.print("||");
 
       Serial.print("Flow rate2: ");
@@ -551,6 +548,11 @@ void openSelenoidValve(int flowRate)
       Serial.print(totalMilliLitres2, DEC);
       Serial.println("mL");
       Serial.print("\t");
+
+      lcd_I2C.setCursor(0, 2);
+      lcd_I2C.print("Total ml B: ");
+      lcd_I2C.setCursor(12, 2);
+      lcd_I2C.print(totalMilliLitres2, DEC);
 
       // Reset the pulse counter so we can start incrementing again
       flowMeterCount1 = 0;
@@ -566,10 +568,10 @@ void openSelenoidValve(int flowRate)
   totalMilliLitres1 = 0;
   totalMilliLitres2 = 0;
 
+  lcd_I2C.clear();
+
   detachInterrupt(FLOW_PIN1);
   detachInterrupt(FLOW_PIN2);
-
-  readTDS();
 }
 
 //* valveCallback() function definition
