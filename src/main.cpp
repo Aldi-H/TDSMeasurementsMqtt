@@ -47,8 +47,10 @@
 #define SCOUNT 30
 
 //* WiFi Initialization
-const char *ssid = "Kuro";
-const char *password = "kuro_1905";
+// const char *ssid = "Kuro";
+// const char *password = "kuro_1905";
+const char *ssid = "HUAWEI-V945";
+const char *password = "Ah6Du2JN";
 
 //! Variable Instance Goes Here!
 //* TimePoint and paralel time
