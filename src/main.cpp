@@ -448,7 +448,7 @@ void readTDS()
 void sendToMqtt()
 {
   DynamicJsonDocument doc(1024);
-  doc["ppm"] = tdsValue;
+  doc["ppm"] = TDSMedian;
   doc["temperature"] = temperatureValue;
   doc["source"] = "mqtt";
 
