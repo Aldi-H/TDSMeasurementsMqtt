@@ -22,6 +22,9 @@
 //* LCD I2C Library
 #include <LiquidCrystal_I2C.h>
 
+//* EEPROM Library
+#include <EEPROM.h>
+
 //! Variable and PIN Initialization Goes Here!
 //* MQTT Variable
 #define MQTT_MSG_Buffer_Size (50)
@@ -36,6 +39,12 @@
 #define sensorInterrupt 0
 #define FLOW_PIN1 35
 #define FLOW_PIN2 32
+
+//* EEPROM Variable
+#define EEPROM_SIZE 16
+
+//* Median Variable
+#define SCOUNT 30
 
 //* WiFi Initialization
 const char *ssid = "Kuro";
@@ -60,9 +69,6 @@ DallasTemperature DS18B20_Sensor(&oneWire);
 //* Initial Value for TDS and Temperature
 float tdsValue = 0;
 float temperatureValue = 0;
-/* //* Caller Value for TDS and Temperature
-float tdsValueResult;
-float temperatureValueResult; */
 
 //* LCD I2C Instance
 LiquidCrystal_I2C lcd_I2C(0x27, 20, 4);
@@ -96,12 +102,24 @@ unsigned long flowMeterOldTime = 0;
 unsigned long backlightOnTime = 0;
 const unsigned long backlightOnDuration = 3000;
 
+//* Median Instance
+float MedianBuffer[SCOUNT];
+int MedianBufferIndex = 0;
+int copyIndex = 0;
+float TDSMedian = 0;
+
 //! Function Declaration Goes Here!
 //* Function declaration for setupWifi
 void setupWifi();
 
 //* Function declaration for mqttReconnect
 void mqttReconnect();
+
+//* Function declaration for readTDS_Median
+void readTDS_Median();
+
+//* Function declaration for getMedianNum
+float getMedianNum(float bArray[], int iFilterLen);
 
 //* FUnction declaration for readTDS
 void readTDS();
@@ -122,6 +140,10 @@ void valveCallback(char *topic, byte *message, unsigned int length);
 //! MAIN PROGRAM START HERE!
 void setup()
 {
+  //* EEPROM Begin
+
+  EEPROM.begin(EEPROM_SIZE);
+
   Serial.begin(115200);
 
   //* LCD I2C Setup
@@ -191,6 +213,16 @@ void loop()
 
   readTDS();
 
+  MedianBuffer[MedianBufferIndex] = tdsValue; //  store into the buffer
+  MedianBufferIndex++;
+  if (MedianBufferIndex >= SCOUNT)
+  {
+    TDSMedian = getMedianNum(MedianBuffer, SCOUNT);
+    Serial.printf("Temperature: %.2fC ", temperatureValue);
+    Serial.printf("| TDS Median Value: %.2fppm \n", TDSMedian);
+    MedianBufferIndex = 0;
+  }
+
   if (rtcCurrentTime.second() == 0 && !isSendToMqtt)
   {
     if (rtcCurrentTime.minute() % 1 == 0)
@@ -214,6 +246,7 @@ void loop()
       lcd_I2C.print("TDS Value: ");
       lcd_I2C.setCursor(10, 2);
       lcd_I2C.print(tdsValue);
+      lcd_I2C.print(TDSMedian);
 
       // backlightOnTime = millisCurrentTime;
       isSendToMqtt = true;
@@ -348,6 +381,58 @@ void mqttReconnect()
   }
 }
 
+float getMedianNum(float bArray[], int iFilterLen)
+{
+  int bTab[iFilterLen];
+
+  for (byte i = 0; i < iFilterLen; i++)
+    bTab[i] = bArray[i];
+  int i, j, bTemp;
+
+  for (j = 0; j < iFilterLen - 1; j++)
+  {
+    for (i = 0; i < iFilterLen - j - 1; i++)
+    {
+      if (bTab[i] > bTab[i + 1])
+      {
+        bTemp = bTab[i];
+        bTab[i] = bTab[i + 1];
+        bTab[i + 1] = bTemp;
+      }
+    }
+  }
+  if ((iFilterLen & 1) > 0)
+  {
+    bTemp = bTab[(iFilterLen - 1) / 2];
+  }
+  else
+  {
+    bTemp = (bTab[iFilterLen / 2] + bTab[iFilterLen / 2 - 1]) / 2;
+  }
+  return bTemp;
+}
+
+//* readTDS() dengan tambahan nilai median
+void readTDS_median()
+{
+  DS18B20_Sensor.requestTemperatures();
+  temperatureValue = DS18B20_Sensor.getTempCByIndex(0);
+  gravityTds.setTemperature(temperatureValue);
+  gravityTds.update();
+  tdsValue = gravityTds.getTdsValue();
+  // median
+  MedianBuffer[MedianBufferIndex] = tdsValue; //  store into the buffer
+
+  MedianBufferIndex++;
+  if (MedianBufferIndex >= SCOUNT)
+  {
+    TDSMedian = getMedianNum(MedianBuffer, SCOUNT); // * (float)VREF / 4096.0;
+    Serial.printf("Temperature: %.2fC ", temperatureValue);
+    Serial.printf("| TDS Value: %.2fppm \n", TDSMedian);
+    MedianBufferIndex = 0;
+  }
+}
+
 //* readTDS() function definition
 void readTDS()
 {
@@ -360,8 +445,10 @@ void readTDS()
   Serial.printf("Temperature: %.2fC ", temperatureValue);
   Serial.printf("| TDS Value: %.2fppm \n", tdsValue);
 
-  /**tdsReadingResult = tdsValue;
-   *temperatureReadingResult = temperatureValue; */
+  lcd_I2C.setCursor(0, 3);
+  lcd_I2C.print("                    ");
+  lcd_I2C.setCursor(10, 3);
+  lcd_I2C.print(tdsValue);
 }
 
 //* sendToMqtt() function definition
