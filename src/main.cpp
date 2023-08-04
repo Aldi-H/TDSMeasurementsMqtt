@@ -91,7 +91,7 @@ volatile int flowMeterCount2;
 //* Flow Meter Instance
 //! You can change according to your datasheet
 //! Flow pulse characteristics: F = (98*Q) ± 2% Q = L/min
-float calibrationFactor = 98;
+float calibrationFactor = 55; //* 98
 float flowRate1 = 0.0;
 float flowRate2 = 0.0;
 unsigned int flowMilliLitres1 = 0;
@@ -246,7 +246,6 @@ void loop()
       lcd_I2C.setCursor(0, 2);
       lcd_I2C.print("TDS Value: ");
       lcd_I2C.setCursor(10, 2);
-      lcd_I2C.print(tdsValue);
       lcd_I2C.print(TDSMedian);
 
       isSendToMqtt = true;
@@ -338,6 +337,7 @@ void mqttReconnect()
       lcd_I2C.noBacklight();
 
       //* client subscribe topic
+      client.subscribe("heizou/valve/20");
       client.subscribe("heizou/valve/50");
       client.subscribe("heizou/valve/100");
       client.subscribe("heizou/valve/200");
@@ -484,6 +484,10 @@ void openSelenoidValve(int flowRate)
 {
   digitalWrite(SSR_PIN, LOW);
 
+  //* uncomment this later
+  // attachInterrupt(FLOW_PIN1, IRAMFlow1, FALLING);
+  // attachInterrupt(FLOW_PIN2, IRAMFlow2, FALLING);
+
   while (totalMilliLitres1 <= flowRate || totalMilliLitres2 <= flowRate)
   {
     // only process counters once per second
@@ -567,13 +571,13 @@ void openSelenoidValve(int flowRate)
   }
 
   digitalWrite(SSR_PIN, HIGH);
+  detachInterrupt(FLOW_PIN1);
+  detachInterrupt(FLOW_PIN2);
+
   totalMilliLitres1 = 0;
   totalMilliLitres2 = 0;
 
   lcd_I2C.clear();
-
-  detachInterrupt(FLOW_PIN1);
-  detachInterrupt(FLOW_PIN2);
 }
 
 //* valveCallback() function definition
@@ -594,6 +598,11 @@ void valveCallback(char *topic, byte *message, unsigned int length)
 
   //*If a message is received on the topic esp32/output, you check if the message is either "on" or "off".
   //* Changes the output state according to the message
+  if (String(topic) == "heizou/valve/20")
+  {
+    Serial.print("Opening Selenoid Valve 20ml");
+    openSelenoidValve(20);
+  }
   if (String(topic) == "heizou/valve/50")
   {
     Serial.print("Opening Selenoid Valve 50ml");
