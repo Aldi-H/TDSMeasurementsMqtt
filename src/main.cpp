@@ -143,7 +143,6 @@ void valveCallback(char *topic, byte *message, unsigned int length);
 void setup()
 {
   //* EEPROM Begin
-
   EEPROM.begin(EEPROM_SIZE);
 
   Serial.begin(115200);
