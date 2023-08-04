@@ -373,6 +373,7 @@ void mqttReconnect()
   }
 }
 
+//* getMedianNum function definition
 float getMedianNum(float bArray[], int iFilterLen)
 {
   int bTab[iFilterLen];
