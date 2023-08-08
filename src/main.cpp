@@ -33,7 +33,8 @@
 #define TDS_PIN 34
 
 //* SSR PIN
-#define SSR_PIN 26
+#define SSR_PIN1 26
+#define SSR_PIN2 14
 
 //* Flow Meter Pin and Interrupt
 #define sensorInterrupt 0
@@ -181,8 +182,10 @@ void setup()
   pinMode(BUILTIN_LED, OUTPUT);
 
   //* SSR Setup
-  pinMode(SSR_PIN, OUTPUT);
-  digitalWrite(SSR_PIN, HIGH);
+  pinMode(SSR_PIN1, OUTPUT);
+  digitalWrite(SSR_PIN1, HIGH);
+  pinMode(SSR_PIN2, OUTPUT);
+  digitalWrite(SSR_PIN2, HIGH);
 
   //* Flow Meter Setup
   pinMode(FLOW_PIN1, INPUT);
@@ -419,7 +422,7 @@ void readTDS_median()
   MedianBufferIndex++;
   if (MedianBufferIndex >= SCOUNT)
   {
-    TDSMedian = getMedianNum(MedianBuffer, SCOUNT); // * (float)VREF / 4096.0;
+    TDSMedian = getMedianNum(MedianBuffer, SCOUNT);
     Serial.printf("Temperature: %.2fC ", temperatureValue);
     Serial.printf("| TDS Value: %.2fppm \n", TDSMedian);
     MedianBufferIndex = 0;
@@ -482,13 +485,14 @@ void IRAM_ATTR IRAMFlow2()
 //* openSelenoidValve() function definition
 void openSelenoidValve(int flowRate)
 {
-  digitalWrite(SSR_PIN, LOW);
+  digitalWrite(SSR_PIN1, LOW);
+  digitalWrite(SSR_PIN2, LOW);
 
   //* uncomment this later
   // attachInterrupt(FLOW_PIN1, IRAMFlow1, FALLING);
   // attachInterrupt(FLOW_PIN2, IRAMFlow2, FALLING);
 
-  while (totalMilliLitres1 <= flowRate || totalMilliLitres2 <= flowRate)
+  while (totalMilliLitres2 <= flowRate && totalMilliLitres1 <= flowRate)
   {
     // only process counters once per second
     if ((millis() - flowMeterOldTime) > 1000)
@@ -496,6 +500,19 @@ void openSelenoidValve(int flowRate)
       // Disable the interrupt while calculating flow rate and sending the value to the host
       detachInterrupt(FLOW_PIN1);
       detachInterrupt(FLOW_PIN2);
+
+      // //* Check valve one by one
+      if (totalMilliLitres1 >= flowRate)
+      {
+        digitalWrite(SSR_PIN1, HIGH);
+        detachInterrupt(FLOW_PIN1);
+      }
+
+      if (totalMilliLitres2 >= flowRate)
+      {
+        digitalWrite(SSR_PIN2, HIGH);
+        detachInterrupt(FLOW_PIN2);
+      }
 
       /*
        * Because this loop may not complete in exactly 1 second intervals
@@ -525,7 +542,6 @@ void openSelenoidValve(int flowRate)
       totalMilliLitres1 += flowMilliLitres1;
       totalMilliLitres2 += flowMilliLitres2;
 
-      // Print the flow rate for this second in litres / minute
       Serial.print("Flow rate1: ");
       Serial.print(flowMilliLitres1, DEC); // Print the integer part of the variable
       Serial.print("mL/Second");
@@ -543,13 +559,13 @@ void openSelenoidValve(int flowRate)
       lcd_I2C.setCursor(12, 1);
       lcd_I2C.print(totalMilliLitres1, DEC);
 
-      Serial.print("||");
-
+      // Print the flow rate for this second in litres / minute
       Serial.print("Flow rate2: ");
       Serial.print(flowMilliLitres2, DEC); // Print the integer part of the variable
       Serial.print("mL/Second");
       Serial.print("\t");
 
+      // Print the cumulative total of litres flowed since starting
       Serial.print("Output Liquid Quantity2: ");
       Serial.print(totalMilliLitres2, DEC);
       Serial.println("mL");
@@ -570,8 +586,10 @@ void openSelenoidValve(int flowRate)
     }
   }
 
-  digitalWrite(SSR_PIN, HIGH);
+  digitalWrite(SSR_PIN1, HIGH);
   detachInterrupt(FLOW_PIN1);
+
+  digitalWrite(SSR_PIN2, HIGH);
   detachInterrupt(FLOW_PIN2);
 
   totalMilliLitres1 = 0;
@@ -601,21 +619,25 @@ void valveCallback(char *topic, byte *message, unsigned int length)
   if (String(topic) == "heizou/valve/20")
   {
     Serial.print("Opening Selenoid Valve 20ml");
+    calibrationFactor = 50;
     openSelenoidValve(20);
   }
   if (String(topic) == "heizou/valve/50")
   {
     Serial.print("Opening Selenoid Valve 50ml");
+    calibrationFactor = 55;
     openSelenoidValve(50);
   }
   if (String(topic) == "heizou/valve/100")
   {
     Serial.print("Opening Selenoid Valve 100ml");
+    calibrationFactor = 60;
     openSelenoidValve(100);
   }
   if (String(topic) == "heizou/valve/200")
   {
     Serial.print("Opening Selenoid Valve 200ml");
+    calibrationFactor = 60;
     openSelenoidValve(200);
   }
 }
