@@ -50,8 +50,10 @@
 //* WiFi Initialization
 // const char *ssid = "Kuro";
 // const char *password = "kuro_1905";
-const char *ssid = "HUAWEI-V945";
-const char *password = "Ah6Du2JN";
+// const char *ssid = "HUAWEI-V945";
+// const char *password = "Ah6Du2JN";
+const char *ssid = "Huawei-23GH";
+const char *password = "7tffh1r3";
 
 //! Variable Instance Goes Here!
 //* TimePoint and paralel time
@@ -339,10 +341,10 @@ void mqttReconnect()
       lcd_I2C.noBacklight();
 
       //* client subscribe topic
-      client.subscribe("heizou/valve/20");
-      client.subscribe("heizou/valve/50");
-      client.subscribe("heizou/valve/100");
-      client.subscribe("heizou/valve/200");
+      client.subscribe("yuanmq/valve/20");
+      client.subscribe("yuanmq/valve/50");
+      client.subscribe("yuanmq/valve/100");
+      client.subscribe("yuanmq/valve/200");
     }
     else
     {
@@ -460,7 +462,7 @@ void sendToMqtt()
   Serial.println("Sending message to MQTT tpic..");
   Serial.println(JSONMessageBuffer);
 
-  if (client.publish("heizou/tdstemp", JSONMessageBuffer) == true)
+  if (client.publish("yuanmq/tdstemp", JSONMessageBuffer) == true)
   {
     Serial.println("Success sending message");
   }
@@ -616,25 +618,25 @@ void valveCallback(char *topic, byte *message, unsigned int length)
 
   //*If a message is received on the topic esp32/output, you check if the message is either "on" or "off".
   //* Changes the output state according to the message
-  if (String(topic) == "heizou/valve/20")
+  if (String(topic) == "yuanmq/valve/20")
   {
     Serial.print("Opening Selenoid Valve 20ml");
     calibrationFactor = 50;
     openSelenoidValve(20);
   }
-  if (String(topic) == "heizou/valve/50")
+  if (String(topic) == "yuanmq/valve/50")
   {
     Serial.print("Opening Selenoid Valve 50ml");
     calibrationFactor = 55;
     openSelenoidValve(50);
   }
-  if (String(topic) == "heizou/valve/100")
+  if (String(topic) == "yuanmq/valve/100")
   {
     Serial.print("Opening Selenoid Valve 100ml");
     calibrationFactor = 60;
     openSelenoidValve(100);
   }
-  if (String(topic) == "heizou/valve/200")
+  if (String(topic) == "yuanmq/valve/200")
   {
     Serial.print("Opening Selenoid Valve 200ml");
     calibrationFactor = 60;
